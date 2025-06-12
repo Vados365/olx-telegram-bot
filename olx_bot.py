@@ -6,7 +6,7 @@ import time
 
 # Твій Telegram-бот токен і ID чату
 BOT_TOKEN = '7733549623:AAHtVRbNOZSLY1QzCkiVCFoHrPQgAJ-VdXI'
-CHAT_ID = '6458514686'
+CHAT_ID = 6458514686
 
 # OLX URL з фільтром для iPhone 11 в ціні 3500–6000 грн
 URL = 'https://www.olx.ua/uk/list/q-iphone-11/?search%5Bfilter_float_price%3Afrom%5D=3500&search%5Bfilter_float_price%3Ato%5D=6000'
