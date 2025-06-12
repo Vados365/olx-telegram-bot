@@ -1,67 +1,74 @@
-import os
 import requests
 from bs4 import BeautifulSoup
-from telegram import Bot
 import asyncio
+from telegram import Bot
+import time
 
-# Витягуємо токен і chat_id з середовища, або використовуємо значення по замовчуванню
-TOKEN = os.getenv("TOKEN", "8018888910:AAGQlpp-t0Z6LiVxTQ9Sa8YDhRW5rmkVo")
-CHAT_ID = int(os.getenv("CHAT_ID", 653066863))
+# Твій Telegram-бот токен і ID чату
+BOT_TOKEN = '7733549623:AAHtVRbNOZSLY1QzCkiVCFoHrPQgAJ-VdXI'
+CHAT_ID = '6458514686'
 
-bot = Bot(token=TOKEN)
-URL = "https://www.olx.ua/uk/list/q-iphone-11/?search%5Bfilter_float_price%3Afrom%5D=3500&search%5Bfilter_float_price%3Ato%5D=6000"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# OLX URL з фільтром для iPhone 11 в ціні 3500–6000 грн
+URL = 'https://www.olx.ua/uk/list/q-iphone-11/?search%5Bfilter_float_price%3Afrom%5D=3500&search%5Bfilter_float_price%3Ato%5D=6000'
 
-seen_ads = set()
+# Зберігати ID оголошень, щоб не надсилати повторно
+sended_ads = set()
 
-def fetch_ads():
-    ads = []
-    try:
-        response = requests.get(URL, headers=HEADERS)
-        print("Status code:", response.status_code)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "lxml")
-        cards = soup.select("div[data-cy='l-card']")
-        print(f"Знайдено оголошень: {len(cards)}")
-        for card in cards:
-            title_elem = card.select_one("h6")
-            price_elem = card.select_one("p[data-testid='ad-price']")
-            link_elem = card.select_one("a")
+# Ініціалізуємо Telegram бота
+bot = Bot(token=BOT_TOKEN)
 
-            if title_elem and price_elem and link_elem:
-                title = title_elem.get_text(strip=True)
-                price = price_elem.get_text(strip=True)
-                link = "https://www.olx.ua" + link_elem['href']
-                ad_id = link.split("-")[-1].replace(".html", "")
+# Парсинг OLX
+def get_ads():
+    response = requests.get(URL)
+    print("Status code:", response.status_code)
 
-                if ad_id not in seen_ads:
-                    seen_ads.add(ad_id)
-                    ads.append((title, price, link))
-    except Exception as e:
-        print("Помилка при парсингу OLX:", e)
-    return ads
+    if response.status_code != 200:
+        return []
 
+    soup = BeautifulSoup(response.text, 'lxml')
+    ads = soup.find_all('div', class_='css-1sw7q4x')
+    print("Знайдено оголошень на сторінці:", len(ads))
+
+    new_ads = []
+
+    for ad in ads:
+        title_tag = ad.find('h6')
+        link_tag = ad.find('a', href=True)
+        price_tag = ad.find('p', class_='css-10b0gli')
+
+        if not title_tag or not link_tag or not price_tag:
+            continue
+
+        title = title_tag.text.strip()
+        link = 'https://www.olx.ua' + link_tag['href']
+        price = price_tag.text.strip()
+
+        ad_id = link.split('-ID')[1].split('.')[0] if '-ID' in link else link
+
+        if ad_id not in sended_ads:
+            new_ads.append((title, price, link))
+            sended_ads.add(ad_id)
+
+    return new_ads
+
+# Основна функція
 async def main():
-    print("Бот запущено.")
-
-    try:
-        await bot.send_message(chat_id=CHAT_ID, text="OLX бот запущено ✅")
-    except Exception as e:
-        print("Не вдалося надіслати стартове повідомлення:", e)
+    await bot.send_message(chat_id=CHAT_ID, text="Бот запущений і готовий надсилати повідомлення.")
+    print("Запуск OLX Telegram бота...")
 
     while True:
-        new_ads = fetch_ads()
+        new_ads = get_ads()
+        print("Нові оголошення для відправки:", len(new_ads))
+
         if new_ads:
             for title, price, link in new_ads:
-                message = f"🔔 Нове оголошення:\n\n📱 {title}\n💰 Ціна: {price}\n🔗 {link}"
-                try:
-                    await bot.send_message(chat_id=CHAT_ID, text=message)
-                    print(f"Надіслано: {title}")
-                except Exception as e:
-                    print("Помилка надсилання:", e)
+                message = f"📱 {title}\n💰 {price}\n🔗 {link}"
+                await bot.send_message(chat_id=CHAT_ID, text=message)
+                await asyncio.sleep(1)  # невелика пауза між повідомленнями
         else:
             print("Нових оголошень немає.")
-        await asyncio.sleep(300)  # 5 хвилин
 
-if __name__ == "__main__":
+        time.sleep(300)  # перевіряти кожні 5 хвилин
+
+if __name__ == '__main__':
     asyncio.run(main())
