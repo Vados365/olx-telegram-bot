@@ -1,10 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
-import time
+import os
 
-TOKEN = "8018888910:AAGQlpp-t0Z6LiVxTQ9Sa8C9YDhRW5rmkVo"
-CHAT_ID = 653066863
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = int(os.getenv("CHAT_ID"))
+
 
 bot = Bot(token=TOKEN)
 URL = "https://www.olx.ua/uk/list/q-iphone-11/?search%5Bfilter_float_price%3Afrom%5D=3500&search%5Bfilter_float_price%3Ato%5D=6000"
